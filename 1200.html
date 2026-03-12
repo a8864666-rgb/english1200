@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>會考英文 1200 單挑戰</title>
+    <meta name="theme-color" content="#3498db">
+    <link rel="manifest" href="data:application/manifest+json,{%22name%22:%22會考英文1200%22,%22short_name%22:%221200單%22,%22start_url%22:%22.%22,%22display%22:%22standalone%22,%22background_color%22:%22%23f8f9fa%22,%22theme_color%22:%22%233498db%22,%22icons%22:[{%22src%22:%22https://cdn-icons-png.flaticon.com/512/3426/3426052.png%22,%22sizes%22:%22512x512%22,%22type%22:%22image/png%22}]}">
+    
+    <style>
+        :root { --primary: #3498db; --success: #2ecc71; --error: #e74c3c; --bg: #f8f9fa; --review: #f39c12; }
+        body { font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif; background-color: var(--bg); display: flex; flex-direction: column; align-items: center; padding: 15px; margin: 0; min-height: 100vh; }
+        .main-container { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; width: 100%; max-width: 1100px; }
+        .quiz-section { flex: 1; min-width: 320px; max-width: 550px; }
+        .wrong-list-section { width: 320px; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); max-height: 85vh; display: flex; flex-direction: column; }
+        .header, .login-box { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; text-align: center; width: 100%; box-sizing: border-box; }
+        .progress-container { width: 100%; background-color: #eee; border-radius: 10px; margin: 10px 0; height: 10px; overflow: hidden; }
+        .progress-bar { height: 100%; background: var(--success); width: 0%; transition: 0.5s; }
+        .btn-main { padding: 12px 30px; background: var(--primary); color: white; border: none; border-radius: 25px; cursor: pointer; font-size: 1rem; font-weight: bold; width: 100%; margin-bottom: 10px; }
+        .btn-review { background: var(--review); }
+        .question-card { background: white; padding: 30px 20px; border-radius: 15px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 15px; }
+        .question-word { font-size: 2.5rem; font-weight: bold; color: var(--primary); display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .speaker-icon { cursor: pointer; font-size: 1.5rem; color: #95a5a6; }
+        .options-grid { display: grid; gap: 12px; }
+        .option-btn { background: white; border: 2px solid #ecf0f1; padding: 15px; border-radius: 12px; font-size: 1.1rem; cursor: pointer; text-align: center; }
+        .option-btn.correct { background: var(--success) !important; color: white; }
+        .option-btn.wrong { background: var(--error) !important; color: white; }
+        .wrong-item { display: flex; justify-content: space-between; background: #fff5f5; color: #e74c3c; padding: 8px 12px; margin-bottom: 5px; border-radius: 8px; border: 1px solid #ffebeb; align-items: center; }
+        .wrong-count { background: var(--error); color: white; border-radius: 12px; padding: 2px 8px; font-size: 0.8rem; }
+        #game-area { display: none; width: 100%; }
+    </style>
+</head>
+<body>
+
+<div id="login-screen" class="login-box" style="max-width: 400px;">
+    <h2>學生登入 ⚡</h2>
+    <input type="text" id="student-name" placeholder="請輸入姓名" style="width:80%; padding:12px; margin:10px 0; border-radius:10px; border:1px solid #ddd;">
+    <button class="btn-main" onclick="login()">開始練習</button>
+</div>
+
+<div id="game-area" class="main-container">
+    <div class="quiz-section">
+        <div class="header">
+            <h3 id="welcome-msg" style="margin:0;"></h3>
+            <div style="font-size: 1.1rem; font-weight: bold; color: var(--primary); margin: 5px 0;">正確率：<span id="score-text">0 / 0</span></div>
+            <div class="progress-container"><div id="progress-bar" class="progress-bar"></div></div>
+            <div id="total-progress-text" style="font-size: 0.8rem; color: #7f8c8d;">掌握度：0 / 100</div>
+            <select id="level-select" onchange="isReviewMode=false; loadLevel()" style="width:100%; padding:10px; border-radius:10px; margin-top:10px;"></select>
+        </div>
+        
+        <div class="question-card">
+            <div id="stats" style="color: #7f8c8d; font-size: 0.8rem; margin-bottom: 5px;"></div>
+            <div class="question-word">
+                <span id="q-word">...</span>
+                <span class="speaker-icon" onclick="speakWord()">🔊</span>
+            </div>
+            <div id="result-msg" style="margin-top:10px; font-weight:bold; height:24px;"></div>
+        </div>
+        
+        <div class="options-grid" id="options"></div>
+        <button id="next-btn" class="btn-main" style="margin-top:15px; display:none;" onclick="generateQuestion()">下一題</button>
+    </div>
+
+    <div class="wrong-list-section">
+        <h3 style="margin:0; color: var(--error);">📊 錯誤排行榜</h3>
+        <button class="btn-main btn-review" style="margin-top:10px;" onclick="startReviewMode()">複習錯題</button>
+        <div id="wrong-list-container" style="flex:1; overflow-y:auto; margin-top:10px;"></div>
+    </div>
+</div>
+
+<script>
+/** * 此處插入 1200 單字資料庫與邏輯
+ * 為節省篇幅，我已將所有 1200 單字打包進入 wordData 
+ */
+const wordData = [
+    // Level 1 (PDF Page 1)
+    ["a (an)", "一(個)"], ["a few", "一些"], ["a little", "一些"], ["a lot", "許多"], ["able", "能夠...的"], ["about", "關於"], ["above", "在...上方"], ["abroad", "在國外"], ["across", "在...對面"], ["actress", "女演員"], ["afraid", "害怕的"], ["after", "在...之後"], ["afternoon", "下午"], ["again", "再一次"], ["age", "年齡"], ["ago", "以前"], ["agree", "同意"], ["ahead", "在前方"], ["air", "空氣"], ["airplane", "飛機"], ["airport", "機場"], ["all", "全部的"], ["almost", "幾乎"], ["along", "沿著"], ["already", "已經"], ["also", "也"], ["always", "總是"], ["a.m.", "上午"], ["America", "美國"], ["American", "美國人;美國的"], ["and", "和"], ["angry", "生氣的"], ["animal", "動物"], ["another", "另一個的"], ["answer", "回答"], ["ant", "螞蟻"], ["any", "任何的"], ["anyone", "任何人"], ["anything", "任何事物"], ["apartment", "公寓"], ["appear", "出現"], ["apple", "蘋果"], ["April", "四月"], ["arm", "手臂,武裝"], ["around", "在...四周"], ["arrive", "到達"], ["art", "美術"], ["as", "與...一樣"], ["ask", "問"], ["at", "在"], ["August", "八月"], ["aunt", "伯(叔)母"], ["autumn", "秋天"], ["away", "遠離"], ["baby", "嬰兒"], ["back", "在...後面"], ["bad", "壞的"], ["badminton", "羽毛球"], ["bag", "袋子"], ["bake", "烘烤"], ["bakery", "麵包店"], ["balcony", "陽台"], ["ball", "球"], ["banana", "香蕉"], ["band", "樂團"], ["bank", "銀行"], ["barbecue", "烤肉"], ["baseball", "棒球"], ["basket", "籃子"], ["basketball", "籃球"], ["bat", "蝙蝠"], ["bath", "洗澡"], ["bathroom", "浴室"], ["be", "是"], ["beach", "海灘"], ["bean", "豆"], ["bear", "熊"], ["beautiful", "美麗的"], ["because", "因為"], ["become", "變成"], ["bed", "床"], ["bedroom", "臥室"], ["bee", "蜜蜂"], ["beef", "牛肉"], ["before", "在...之前"], ["begin", "開始"], ["behind", "在...後面"], ["believe", "相信"], ["bell", "鈴"], ["belong", "屬於"], ["below", "在...下方"], ["belt", "皮帶"], ["bench", "長椅"], ["beside", "在...旁邊"], ["between", "在...之間"], ["bike", "腳踏車"], ["big", "大的"], ["bird", "鳥"], ["birthday", "生日"], ["bite", "咬"],
+    // Level 2 (PDF Page 2)
+    ["black", "黑色(的)"], ["blackboard", "黑板"], ["blanket", "毯子"], ["blind", "瞎的"], ["block", "街區"], ["blow", "吹"], ["blue", "藍色(的)"], ["boat", "船"], ["body", "身體"], ["boil", "煮沸"], ["book", "書"], ["bookstore", "書店"], ["bored", "感到厭煩的"], ["boring", "無聊的"], ["born", "出生"], ["borrow", "借入"], ["boss", "老板"], ["both", "兩者都"], ["bottle", "瓶子"], ["bottom", "底部"], ["bow", "敬禮"], ["bowl", "碗"], ["box", "盒子"], ["boy", "男孩"], ["bread", "麵包"], ["break", "打破"], ["breakfast", "早餐"], ["bridge", "橋"], ["bright", "明亮的"], ["bring", "帶來"], ["brother", "兄弟"], ["brown", "棕色(的)"], ["brush", "刷"], ["bug", "小蟲"], ["build", "建造"], ["bun", "小圓麵包"], ["burn", "燃燒"], ["bus", "公車"], ["business", "生意"], ["businessman", "商人"], ["busy", "忙碌的"], ["but", "但是"], ["butter", "奶油"], ["butterfly", "蝴蝶"], ["buy", "買"], ["by", "藉著"], ["cage", "籠子"], ["cake", "蛋糕"], ["camera", "照相機"], ["call", "打電話"], ["camp", "露營"], ["can", "能夠"], ["candle", "蠟燭"], ["candy", "糖果"], ["cap", "無邊帽"], ["car", "車子"], ["card", "卡片"], ["care", "關心"], ["careful", "仔細的"], ["carry", "攜帶"], ["case", "情形"], ["castle", "城堡"], ["cat", "貓"], ["catch", "趕上"], ["celebrate", "慶祝"], ["cell phone", "手機"], ["cent", "〈一〉分錢"], ["center", "中心"], ["centimeter", "公分"], ["chair", "椅子"], ["chalk", "粉筆"], ["chance", "機會"], ["change", "交換,零錢"], ["cheap", "便宜的"], ["cheat", "欺騙"], ["check", "檢查"], ["cheer", "歡呼"], ["cheese", "乳酪"], ["chess", "西洋棋"], ["chicken", "雞肉"], ["child", "小孩"], ["China", "中國"], ["Chinese", "中國人,中文"], ["chocolate", "巧克力"], ["choose", "選擇"], ["chopsticks", "筷子"], ["Christmas", "聖誕節"], ["church", "教堂"], ["circle", "圓圈"], ["city", "城市"], ["clap", "拍手"], ["class", "班級"], ["classmate", "同班同學"], ["classroom", "教室"], ["clean", "打掃"], ["clear", "清楚的"], ["clerk", "店員"], ["climb", "爬"], ["clock", "時鐘"], ["close", "關上"],
+    // Level 3 (PDF Page 3)
+    ["clothes", "衣服"], ["cloudy", "多雲的"], ["club", "社團"], ["coat", "大衣"], ["coffee", "咖啡"], ["Coke", "可樂"], ["cold", "寒冷的"], ["collect", "收集"], ["color", "顏色"], ["come", "來"], ["comb", "梳子"], ["comfortable", "舒適的"], ["comic", "連環漫畫"], ["common", "共同的"], ["computer", "電腦"], ["convenient", "方便的"], ["cook", "煮飯"], ["cookie", "餅乾"], ["cool", "涼爽的"], ["copy", "抄寫,複製"], ["corner", "角落"], ["correct", "正確的"], ["cost", "價值"], ["couch", "沙發"], ["count", "計算"], ["country", "鄉村"], ["course", "課程"], ["cousin", "堂,表兄弟姊妹"], ["cover", "覆蓋,封面,掩護"], ["cow", "母牛"], ["cowboy", "牛仔"], ["crazy", "瘋狂的"], ["cross", "越過"], ["cry", "哭"], ["cup", "茶杯"], ["cut", "切"], ["cute", "可愛的"], ["dance", "跳舞"], ["dangerous", "危險的"], ["dark", "黑暗的"], ["date", "日期"], ["daughter", "女兒"], ["day", "日子"], ["dead", "死的"], ["dear", "親愛的"], ["December", "十二月"], ["decide", "決定"], ["delicious", "美味的"], ["dentist", "牙醫"], ["department store", "百貨公司"], ["desk", "書桌"], ["dictionary", "字典"], ["die", "死掉"], ["different", "不同的"], ["difficult", "困難的"], ["dig", "挖掘"], ["dining room", "飯廳"], ["dinner", "晚餐"], ["dirty", "骯髒的"], ["dish", "盤子,菜餚"], ["do", "做"], ["doctor", "醫生"], ["dodge ball", "躲避球"], ["dog", "狗"], ["doll", "洋娃娃"], ["dollar", "元"], ["door", "門"], ["dot", "點"], ["down", "向下"], ["dozen", "〈一〉打"], ["dragon", "龍"], ["draw", "畫"], ["drawer", "抽屜"], ["dream", "(做)夢"], ["dress", "洋裝"], ["drink", "喝"], ["drive", "駕駛"], ["driver", "駕駛人"], ["drop", "掉落"], ["drum", "鼓"], ["dry", "乾的"], ["duck", "鴨"], ["dumpling", "包餡食物,餃子"], ["during", "在...期間"], ["each", "每一(的〉"], ["ear", "耳朵"], ["early", "早的"], ["earth", "地球"], ["Easter", "復活節"], ["east", "東方"], ["easy", "容易的"], ["eat", "吃"], ["egg", "蛋"], ["eight", "八"], ["eighteen", "十八"], ["eighth", "第八"], ["eighty", "八十"], ["either", "也不"], ["elementary school", "小學"], ["elephant", "大象"],
+    // Level 4 (PDF Page 4)
+    ["eleven", "十一"], ["eleventh", "第十一(的)"], ["else", "其他的"], ["e-mail", "電子郵件"], ["end", "結束"], ["engineer", "工程師"], ["English", "英語"], ["enjoy", "喜愛"], ["enough", "足夠的"], ["enter", "進入"], ["envelope", "信"], ["eraser", "橡皮擦"], ["eve", "前夕"], ["even", "甚至"], ["evening", "傍晚"], ["ever", "曾經"], ["every", "每一個(的)"], ["everyone", "每一個人"], ["everything", "每件事"], ["example", "例子"], ["excellent", "極好的"], ["except", "除了...之外"], ["excited", "感到興奮的"], ["exciting", "令人興奮的"], ["excuse", "原諒"], ["exercise", "運動"], ["expensive", "昂貴的"], ["experience", "經驗"], ["eye", "眼睛"], ["face", "臉孔,面對"], ["fact", "事實"], ["factory", "工廠"], ["fail", "失敗"], ["fall", "秋天/落下"], ["family", "家庭"], ["famous", "有名的"], ["fan", "扇子,擁護者"], ["far", "遠的"], ["farm", "農田"], ["farmer", "農夫"], ["fast", "快的"], ["fat", "胖的"], ["father", "父親"], ["favorite", "最喜愛的"], ["February", "二月"], ["feed", "餵"], ["feel", "覺得"], ["festival", "節慶"], ["fever", "發燒"], ["few", "少數的"], ["fifteen", "十五"], ["fifteenth", "第十五(的)"], ["fifth", "第五(的)"], ["fifty", "五十"], ["fight", "打架"], ["fill", "裝滿"], ["finally", "最後"], ["find", "找到"], ["fine", "很好的"], ["finger", "手指"], ["finish", "完成"], ["fire", "火焰,開火"], ["first", "第一(的)"], ["fish", "魚"], ["fisherman", "漁夫"], ["five", "五"], ["fix", "修理"], ["floor", "地板"], ["flower", "花朵"], ["flute", "笛"], ["fly", "飛"], ["follow", "遵循,跟隨"], ["food", "食物"], ["foot", "腳"], ["for", "為了"], ["foreign", "外國的"], ["foreigner", "外國人"], ["forget", "忘記"], ["fork", "叉子"], ["forty", "四十"], ["four", "四"], ["fourteen", "十四"], ["fourteenth", "第十四(的)"], ["fourth", "第四(的)"], ["fox", "狐狸"], ["free", "空閒的,免費"], ["French fries", "炸薯條"], ["fresh", "新鮮的"], ["Friday", "星期五"], ["friend", "朋友"], ["friendly", "友善的"], ["frisbee", "飛機"], ["frog", "青蛙"], ["from", "從"], ["front", "前面"], ["fruit", "水果"], ["fry", "油炸"], ["full", "滿的"], ["fun", "樂趣"], ["funny", "好笑的"],
+    // Level 5 (PDF Page 5)
+    ["future", "未來"], ["game", "比賽,遊戲"], ["garbage", "垃圾"], ["garden", "花園"], ["gas", "瓦斯"], ["gate", "大門"], ["get", "得到"], ["ghost", "鬼"], ["giant", "巨大的,巨人"], ["gift", "禮物"], ["girl", "女孩"], ["give", "給予"], ["glad", "高興的"], ["glass", "玻璃,玻璃杯"], ["glasses", "眼鏡"], ["glove", "手套"], ["glue", "膠水"], ["go", "去"], ["goat", "山羊"], ["good", "好的"], ["goodbye", "再見"], ["goose", "鵝"], ["grade", "成績,年級"], ["gram", "公克"], ["grandfather", "祖父"], ["grandmother", "祖母"], ["grape", "葡萄"], ["grass", "草"], ["gray", "灰色的"], ["great", "很棒的"], ["green", "綠色(的)"], ["ground", "地面"], ["group", "團體"], ["grow", "種植"], ["guava", "番石榴"], ["guess", "猜想"], ["guitar", "吉他"], ["guy", "傢伙"], ["gym", "體育館"], ["habit", "習慣"], ["hair", "頭髮"], ["half", "一半"], ["Halloween", "萬聖節"], ["ham", "火腿"], ["hamburger", "漢堡"], ["hand", "手"], ["handsome", "英俊的"], ["hang", "懸掛"], ["happen", "發生"], ["happy", "快樂的"], ["hard", "困難的,硬的"], ["hard-working", "努力工作的"], ["hat", "帽子"], ["hate", "討厭"], ["have", "有"], ["he", "他"], ["head", "頭"], ["headache", "頭痛"], ["health", "健康"], ["healthy", "健康的"], ["hear", "聽"], ["heart", "心"], ["heat", "熱度,加熱"], ["heavy", "重的"], ["hello", "喂"], ["help", "幫忙"], ["helpful", "有幫助的"], ["hen", "母雞"], ["here", "這裡"], ["hey", "嘿"], ["hi", "嗨"], ["hide", "隱藏"], ["high", "高的"], ["hike", "徒步旅行"], ["hill", "小山"], ["hippo", "河馬"], ["history", "歷史"], ["hit", "打擊"], ["hobby", "嗜好"], ["hold", "拿著"], ["holiday", "假日"], ["home", "家"], ["homework", "家庭作業"], ["honest", "誠實的"], ["honey", "蜂蜜"], ["hop", "跳"], ["hope", "希望"], ["horse", "馬"], ["hospital", "醫院"], ["hot", "熱的"], ["hot dog", "熱狗"], ["hotel", "旅社"], ["hour", "小時"], ["house", "房屋"], ["housewife", "家庭主婦"], ["how", "如何"], ["however", "然而"], ["hundred", "百"], ["hungry", "飢餓的"], ["hunt", "打獵"],
+    // Level 6 (PDF Page 6)
+    ["hurry", "趕忙"], ["hurt", "受傷,疼痛"], ["husband", "丈夫"], ["I", "我"], ["ice", "冰"], ["ice cream", "冰淇淋"], ["idea", "主意"], ["if", "如果"], ["important", "重要的"], ["in", "在...裡面"], ["insect", "昆蟲"], ["inside", "在...內部"], ["interest", "使...感興趣"], ["interested", "感興趣的"], ["interesting", "有趣的"], ["interview", "訪問,面試"], ["Internet", "網路"], ["into", "到...之內"], ["invite", "邀請"], ["island", "島嶼"], ["it", "它"], ["jacket", "夾克"], ["January", "一月"], ["jeans", "牛仔褲"], ["job", "工作"], ["jog", "慢跑"], ["join", "加入"], ["joy", "歡樂"], ["juice", "果汁"], ["July", "七月"], ["jump", "跳躍"], ["June", "六月"], ["junior high school", "國中"], ["just", "只是,剛才"], ["kangaroo", "袋鼠"], ["keep", "保持"], ["key", "鑰匙"], ["kick", "踢"], ["kid", "小孩"], ["kill", "殺"], ["kilo(gram)", "公斤"], ["kind", "種類"], ["king", "國王"], ["kiss", "吻"], ["kitchen", "廚房"], ["kite", "風箏"], ["knee", "膝蓋"], ["knife", "刀子"], ["knock", "敲"], ["know", "知道"], ["knowledge", "知識"], ["koala", "無尾熊"], ["lake", "湖"], ["lamp", "燈"], ["land", "土地"], ["language", "語言"], ["lantern", "燈籠"], ["large", "大的"], ["last", "最後的"], ["late", "晚的"], ["later", "稍後"], ["laugh", "笑"], ["lawyer", "律師"], ["lazy", "懶惰的"], ["lead", "引導"], ["leader", "領導者"], ["learn", "學習"], ["least", "最少(的〉"], ["leave", "離開"], ["left", "左邊"], ["leg", "腿"], ["lemon", "檸檬"], ["lend", "借出"], ["less", "較少的"], ["lesson", "課"], ["let", "讓"], ["letter", "信"], ["lettuce", "萵苣"], ["library", "圖書館"], ["lid", "蓋子"], ["lie", "說謊"], ["life", "生活"], ["light", "燈光,輕的"], ["like", "喜歡"], ["line", "隊伍,線條"], ["lion", "獅子"], ["lip", "嘴唇"], ["list", "表,名單"], ["listen", "聽"], ["little", "小的"], ["live", "住,活的,實況"], ["living room", "客廳"], ["lonely", "寂寞的"], ["long", "長的"], ["look", "看"], ["lose", "遺失"], ["loud", "大聲的"], ["love", "喜愛"], ["lovely", "可愛的"], ["low", "低的"],
+    // Level 7 (PDF Page 7)
+    ["lucky", "幸運的"], ["lunch", "午餐"], ["machine", "機器"], ["mad", "瘋狂的"], ["magic", "神奇的,魔術"], ["mail", "信件"], ["mailman", "郵差"], ["make", "製作"], ["man", "男人"], ["many", "許多的"], ["map", "地圖"], ["March", "三月"], ["mark", "做記號"], ["marker", "簽字筆"], ["market", "市場"], ["married", "已婚的"], ["mask", "面具"], ["mat", "墊子"], ["math", "數學"], ["matter", "事情"], ["may", "可能"], ["May", "五月"], ["maybe", "也許"], ["meal", "一餐"], ["mean", "意指"], ["meat", "肉"], ["medicine", "藥"], ["medium", "中號〈的〉"], ["meet", "遇見"], ["meeting", "會議"], ["menu", "菜單,選單"], ["mile", "英里,哩"], ["milk", "牛奶"], ["million", "百萬"], ["mind", "介意"], ["minute", "分鐘"], ["Miss", "小姐"], ["miss", "想念"], ["mistake", "錯誤"], ["modern", "現代化的"], ["moment", "片刻"], ["Monday", "星期一"], ["money", "錢"], ["monkey", "猴子"], ["month", "月份"], ["moon", "月亮"], ["mop", "拖地"], ["more", "更多的"], ["morning", "早上"], ["most", "大部分的"], ["mother", "母親"], ["motorcycle", "機車"], ["mountain", "山"], ["mouse", "老鼠"], ["mouth", "嘴巴"], ["move", "移動"], ["movie", "電影"], ["Mr.", "先生"], ["Mrs.", "太太"], ["MRT", "捷運"], ["Ms.", "女士"], ["much", "許多(不可數)"], ["mud", "泥巴"], ["museum", "博物館"], ["music", "音樂"], ["must", "必須"], ["nail", "釘子"], ["name", "名字"], ["national", "國家的"], ["near", "在...附近"], ["neck", "脖子"], ["need", "需要"], ["neighbor", "鄰居"], ["never", "從不"], ["new", "新的"], ["news", "消息,新聞"], ["next", "下一個"], ["nice", "好的"], ["night", "晚上"], ["nine", "九"], ["nineteen", "十九"], ["nineteenth", "第十九"], ["ninety", "九十"], ["ninth", "第九"], ["no", "沒有,不是"], ["nobody", "沒有人"], ["nod", "點頭"], ["noise", "噪音"], ["noodle", "麵條"], ["noon", "中午"], ["north", "北方"], ["nose", "鼻子"], ["not", "不,不是"], ["note", "筆記"], ["notebook", "筆記本,筆電"], ["nothing", "沒東西,沒事"], ["notice", "注意到"], ["November", "十一月"], ["now", "現在"], ["number", "號碼"],
+    // Level 8 (PDF Page 8)
+    ["nurse", "護士"], ["o'clock", "點鐘"], ["October", "十月"], ["of", "...的"], ["off", "自...離開"], ["office", "辦公室"], ["officer", "官員"], ["often", "時常"], ["oil", "油"], ["OK", "可以"], ["old", "老的"], ["on", "在...上面"], ["once", "一次"], ["one", "一"], ["only", "只有"], ["open", "打開,開放"], ["or", "或"], ["orange", "柳橙"], ["order", "點餐,秩序"], ["other", "其他的"], ["out", "在外"], ["outside", "在...外部"], ["over", "結束"], ["own", "自己的"], ["ox", "公牛"], ["pack", "包"], ["package", "包裹"], ["page", "頁"], ["paint", "繪畫"], ["pair", "一雙"], ["pants", "長褲"], ["papaya", "木瓜"], ["paper", "紙"], ["parent(s)", "父(母)親"], ["park", "公園"], ["part", "部分"], ["party", "派對"], ["pass", "通過"], ["past", "經過"], ["paste", "黏貼,漿糊"], ["pay", "付錢"], ["PE(physical education)", "體育"], ["peach", "桃子"], ["pear", "梨子"], ["pen", "筆"], ["pencil", "鉛筆"], ["people", "人們,人民"], ["perhaps", "或許"], ["person", "人"], ["pet", "寵物"], ["photo", "相片"], ["piano", "鋼琴"], ["pick", "撿拾"], ["picnic", "野餐"], ["picture", "圖片,照片"], ["pie", "派"], ["piece", "片"], ["pig", "豬"], ["pin", "大頭針"], ["pink", "粉紅色(的)"], ["pipe", "管"], ["pizza", "披薩"], ["place", "地方"], ["plan", "計畫"], ["planet", "行星"], ["plant", "植物"], ["plate", "盤子"], ["play", "玩"], ["player", "球員,玩家"], ["playground", "操場"], ["pleasure", "樂趣,使高興"], ["please", "請"], ["p.m.", "下午"], ["pocket", "口袋"], ["point", "指著,得分"], ["police", "警察"], ["polite", "有禮貌的"], ["pond", "池塘"], ["pool", "游泳池"], ["poor", "貧困的,可憐的"], ["popcorn", "爆米花"], ["popular", "受歡迎的"], ["pork", "豬肉"], ["possible", "可能的"], ["post office", "郵局"], ["postcard", "明信片"], ["pot", "罐,壺,鍋子"], ["pound", "磅"], ["practice", "練習"], ["pray", "祈禱"], ["prepare", "準備"], ["present", "禮物"], ["pretty", "漂亮的,非常"], ["price", "價格"], ["princess", "公主"], ["prize", "獎品,獎金"], ["problem", "問題"], ["program", "節目"], ["proud", "驕傲的"], ["public", "公立的,公眾的"],
+    // Level 9 (PDF Page 9)
+    ["pull", "拉"], ["pumpkin", "南瓜"], ["purple", "紫色的"], ["push", "推"], ["put", "放"], ["quarter", "15分鐘,1/4"], ["queen", "皇后"], ["question", "問題"], ["quick", "迅速的"], ["quiet", "安靜的"], ["quite", "相當"], ["quiz", "小考"], ["rabbit", "兔子"], ["race", "賽跑"], ["radio", "收音機"], ["railroad", "鐵路"], ["rain", "下雨"], ["rainbow", "彩虹"], ["rainy", "下雨的"], ["raise", "舉起,養育"], ["rat", "(大)老鼠,鼠輩"], ["read", "讀"], ["ready", "準備好的"], ["real", "真的"], ["really", "真地"], ["recorder", "錄音機"], ["red", "紅色(的)"], ["refrigerator", "冰箱"], ["remember", "記得"], ["repeat", "重複"], ["reporter", "記者"], ["rest", "休息"], ["restaurant", "餐館"], ["restroom", "洗手間"], ["rice", "米飯"], ["rich", "有錢的"], ["ride", "騎"], ["right", "右邊"], ["ring", "戒指"], ["river", "河"], ["road", "道路"], ["robot", "機器人"], ["ROC", "中華民國"], ["rock", "岩石"], ["roll", "滾"], ["room", "房間"], ["roller-skating", "溜冰"], ["rope", "繩子"], ["rose", "玫瑰"], ["round", "圓形的"], ["row", "划(船)"], ["rule", "規則"], ["ruler", "尺"], ["run", "跑"], ["sad", "悲傷的"], ["safe", "安全的"], ["sail", "航行"], ["salad", "沙拉"], ["sale", "出售"], ["salesman", "推銷員"], ["salt", "鹽"], ["same", "相同的"], ["sandwich", "三明治"], ["Saturday", "星期六"], ["sacred", "神聖的"], ["save", "節省,挽救"], ["say", "說"], ["school", "學校"], ["science", "科學"], ["scooter", "速克達機車"], ["screen", "螢幕"], ["sea", "海"], ["season", "季節"], ["seat", "座位"], ["second", "第二(的)"], ["secretary", "秘書"], ["see", "看"], ["seed", "種子"], ["seesaw", "蹺蹺板"], ["seldom", "很少"], ["sell", "賣"], ["send", "寄"], ["senior high school", "高中"], ["sentence", "句子"], ["September", "九月"], ["serious", "嚴重的"], ["set", "(電視)機"], ["seven", "七"], ["seventeen", "十七"], ["seventeenth", "第十七"], ["seventh", "第七"], ["seventy", "七十"], ["several", "幾個的"], ["shake", "搖動"], ["shall", "將會,好嗎?"], ["shape", "形狀"], ["share", "分享"], ["shark", "鯊魚"], ["she", "她"], ["sheep", "綿羊"],
+    // Level 10 (PDF Page 10)
+    ["ship", "船"], ["shirt", "襯衫"], ["shoe(s)", "鞋子"], ["shop", "商店"], ["shopkeeper", "店主"], ["short", "短的"], ["shorts", "短褲"], ["should", "應該"], ["shoulder", "肩膀"], ["shout", "喊叫"], ["show", "指示,表演"], ["shy", "害羞的"], ["sick", "生病的"], ["side", "旁邊,邊,面"], ["sidewalk", "人行道"], ["sight", "視力"], ["sign", "標誌"], ["simple", "簡單的"], ["since", "自從"], ["sing", "唱歌"], ["singer", "歌手"], ["sir", "先生"], ["sister", "姊妹"], ["sit", "坐"], ["six", "六"], ["sixteen", "十六"], ["sixteenth", "第十六"], ["sixth", "第六"], ["sixty", "六十"], ["size", "尺寸"], ["skate", "溜冰"], ["skirt", "裙子"], ["sky", "天空"], ["sleep", "睡覺"], ["slide", "滑坡,滑動"], ["slim", "苗條的"], ["slow", "慢的"], ["small", "小"], ["smart", "聰明的"], ["smell", "聞起來"], ["smile", "微笑"], ["smoke", "煙霧,抽菸"], ["snack", "點心"], ["snake", "蛇"], ["snow", "下雪"], ["snowman", "雪人"], ["snowy", "下雪的"], ["so", "如此地"], ["soccer", "足球"], ["song", "歌曲"], ["socks", "襪子"], ["soldier", "軍人"], ["some", "一些"], ["someone", "某人"], ["something", "某事"], ["something", "某事"], ["sometimes", "有時候"], ["somewhere", "某處"], ["son", "兒子"], ["soon", "不久,即將"], ["sore", "疼痛的"], ["sorry", "抱歉"], ["sound", "聲音,聽起來"], ["soup", "湯"], ["south", "南方"], ["space", "空間"], ["spaghetti", "義大利麵"], ["speak", "說"], ["special", "特別"], ["spell", "拼字"], ["spend", "花(錢,時間)"], ["spider", "蜘蛛"], ["spoon", "湯匙"], ["sport", "運動"], ["spring", "春天"], ["square", "正方形的"], ["stairs", "樓梯"], ["stamp", "郵票"], ["stand", "站立"], ["star", "星星"], ["start", "開始"], ["station", "車站,站,局"], ["stay", "停留"], ["steak", "(牛)排"], ["still", "仍然"], ["stomach", "胃"], ["stop", "停"], ["store", "商店"], ["straight", "直的"], ["story", "故事"], ["strange", "奇怪的"], ["stranger", "陌生人"], ["strawberry", "草莓"], ["street", "街道"], ["strong", "強壯的"], ["student", "學生"], ["study", "研讀,學習"], ["stupid", "笨的"], ["subject", "科目"], ["successful", "成功的"],
+    // Level 11 (PDF Page 11)
+    ["sugar", "糖"], ["summer", "夏天"], ["sun", "太陽"], ["Sunday", "星期日"], ["sunny", "晴朗的"], ["supermarket", "超級市場"], ["surf", "衝浪"], ["sure", "確定的"], ["surprise", "使...驚訝"], ["surprised", "感到驚訝的"], ["sweater", "毛衣"], ["sweet", "甜的"], ["swim", "游泳"], ["swing", "鞦韆,搖擺"], ["table", "桌子"], ["tail", "尾巴"], ["take", "拿"], ["Taiwan", "臺灣"], ["talk", "說話"], ["tall", "高的"], ["tape", "錄音帶"], ["taste", "品嚐"], ["taxi", "計程車"], ["tea", "茶"], ["teach", "教導"], ["teacher", "教師"], ["team", "團隊"], ["teenager", "青少年"], ["telephone", "電話"], ["television", "電視"], ["tell", "告訴"], ["temple", "寺廟"], ["ten", "十"], ["tennis", "網球"], ["tenth", "第十"], ["terrible", "可怕的"], ["test", "考試,測試"], ["than", "比..."], ["thank", "謝謝"], ["that", "那個"], ["the", "這/那"], ["theater", "戲院"], ["then", "那時"], ["there", "那裡"], ["these", "這些"], ["they", "他們"], ["thick", "厚的"], ["thin", "瘦的"], ["thing", "事情"], ["think", "想,思考"], ["third", "第三"], ["thirsty", "口渴的"], ["thirteen", "十三"], ["thirteenth", "第十三"], ["thirty", "三十"], ["this", "這個"], ["throat", "喉嚨"], ["throw", "丟"], ["those", "那些"], ["though", "雖然"], ["thousand", "千"], ["three", "三"], ["Thursday", "星期四"], ["ticket", "票券"], ["tidy", "整潔的"], ["tiger", "老虎"], ["tie", "領帶,捆,繫"], ["time", "時間"], ["tired", "疲倦的"], ["to", "到"], ["toast", "土司,烘烤"], ["today", "今天"], ["toe", "腳趾"], ["together", "一起"], ["tomato", "番茄"], ["tomorrow", "明天"], ["tonight", "今晚"], ["too", "也,太..."], ["tooth", "牙齒"], ["top", "頂端"], ["total", "總計"], ["touch", "碰觸"], ["towel", "毛衣"], ["town", "城鎮"], ["toy", "玩具"], ["traffic", "交通"], ["train", "火車"], ["trash", "垃圾"], ["treat", "請客,對待"], ["tree", "樹"], ["trick", "惡作劇"], ["trip", "(短程)旅行"], ["trouble", "麻煩"], ["truck", "卡車"], ["true", "真實的"], ["try", "嘗試"], ["T-shirt", "T恤"], ["tub", "浴缸,洗澡"], ["Tuesday", "星期二"], ["turkey", "火雞"],
+    // Level 12 (PDF Page 12)
+    ["turn", "轉動,轉彎"], ["turtle", "烏龜"], ["twelfth", "第十二"], ["twelve", "十二"], ["twenty", "二十"], ["twentieth", "第二十"], ["twice", "兩次"], ["two", "二"], ["type", "打字"], ["typhoon", "颱風"], ["umbrella", "雨傘"], ["uncle", "伯(叔)"], ["under", "在...之下"], ["understand", "了解"], ["unhappy", "不快樂的"], ["uniform", "制服"], ["until", "直到"], ["up", "向上"], ["USA", "美國"], ["use", "使用"], ["useful", "有用的"], ["usually", "通常"], ["vacation", "假期"], ["vegetable", "蔬菜"], ["very", "非常"], ["vest", "背心"], ["video", "錄影帶"], ["violin", "小提琴"], ["visit", "參觀"], ["voice", "聲音"], ["wait", "等待"], ["waiter", "男服務生"], ["waitress", "女服務生"], ["wake", "醒來"], ["walk", "走路"], ["wall", "牆壁"], ["wallet", "皮夾"], ["want", "想要"], ["warm", "溫暖的"], ["wash", "清洗"], ["watch", "看"], ["water", "水"], ["watermelon", "西瓜"], ["wave", "波浪"], ["way", "道路,方法"], ["we", "我們"], ["weak", "弱的"], ["wear", "穿"], ["weather", "天氣"], ["Wednesday", "星期三"], ["week", "星期"], ["weekend", "週末"], ["welcome", "受歡迎的"], ["well", "好地"], ["west", "西方"], ["wet", "濕的"], ["whale", "鯨魚"], ["what", "什麼"], ["when", "何時"], ["where", "何處"], ["whether", "是否"], ["which", "哪一個"], ["white", "白色(的)"], ["who", "誰"], ["whose", "誰的"], ["why", "為什麼"], ["wife", "妻子"], ["will", "將會..."], ["win", "贏"], ["wind", "風"], ["window", "窗戶"], ["windy", "多風的"], ["winter", "冬天"], ["wise", "明智的"], ["wish", "祝福..."], ["with", "和"], ["without", "沒有"], ["woman", "女人"], ["wonderful", "極好的"], ["word", "字"], ["work", "工作"], ["workbook", "作業本"], ["worker", "工人"], ["world", "世界"], ["worry", "擔心"], ["write", "寫"], ["writer", "作家"], ["wrong", "錯誤"], ["yard", "庭院"], ["year", "年"], ["yellow", "黃色(的)"], ["yes", "是"], ["yesterday", "昨天"], ["yet", "尚未"], ["you", "你(們)"], ["young", "年輕的"], ["yummy", "好吃的"], ["zebra", "斑馬"], ["zero", "零"], ["zoo", "動物園"]
+];
+
+let currentUser = "";
+let quizPool = [];
+let currentQ = null;
+let answered = false;
+let totalPracticed = 0;
+let correctCount = 0;
+let errorCounts = {};
+let isReviewMode = false;
+
+const levelSelect = document.getElementById('level-select');
+function initApp() {
+    levelSelect.innerHTML = "";
+    for (let i = 0; i < 12; i++) {
+        const opt = document.createElement('option');
+        opt.value = i; opt.innerText = `Level ${i+1}`;
+        levelSelect.appendChild(opt);
+    }
+}
+initApp();
+
+function login() {
+    currentUser = document.getElementById('student-name').value.trim();
+    if (!currentUser) return alert("請輸入姓名！");
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('game-area').style.display = 'flex';
+    document.getElementById('welcome-msg').innerText = `你好，${currentUser}`;
+    loadLevel();
+}
+
+function loadLevel() {
+    const lvIdx = parseInt(levelSelect.value);
+    const storageKey = `pwa_1200_v1_${currentUser}_lv${lvIdx}`;
+    const saved = localStorage.getItem(storageKey);
+    
+    if (saved) {
+        const data = JSON.parse(saved);
+        quizPool = data.quizPool;
+        errorCounts = data.errorCounts || {};
+        totalPracticed = data.totalPracticed || 0;
+        correctCount = data.correctCount || 0;
+    } else {
+        quizPool = wordData.slice(lvIdx * 100, (lvIdx + 1) * 100).map(w => ({
+            en: w[0], zh: w[1], weight: 1, isMastered: false
+        }));
+        errorCounts = {};
+        totalPracticed = 0;
+        correctCount = 0;
+    }
+    isReviewMode = false;
+    generateQuestion();
+}
+
+function updateUI() {
+    document.getElementById('score-text').innerText = `${correctCount} / ${totalPracticed}`;
+    const mastered = quizPool.filter(w=>w.isMastered).length;
+    document.getElementById('total-progress-text').innerText = `本關掌握：${mastered} / 100`;
+    document.getElementById('progress-bar').style.width = `${mastered}%`;
+    document.getElementById('stats').innerText = isReviewMode ? `複習中...` : `本關剩餘：${100 - mastered} 字`;
+
+    const container = document.getElementById('wrong-list-container');
+    container.innerHTML = "";
+    const sorted = Object.keys(errorCounts).filter(k=>errorCounts[k]>0).sort((a,b)=>{
+        if(errorCounts[b] !== errorCounts[a]) return errorCounts[b]-errorCounts[a];
+        return a.localeCompare(b);
+    });
+    sorted.forEach(w => {
+        const div = document.createElement('div');
+        div.className = 'wrong-item';
+        div.innerHTML = `<span>${w}</span> <span class="wrong-count">${errorCounts[w]}</span>`;
+        container.appendChild(div);
+    });
+}
+
+function generateQuestion() {
+    let active = isReviewMode ? quizPool.filter(w=>errorCounts[w.en]>0) : quizPool.filter(w=>!w.isMastered);
+    if (active.length === 0) {
+        document.getElementById('q-word').innerText = isReviewMode ? "複習完畢！" : "全數達成！🎉";
+        document.getElementById('options').innerHTML = "";
+        updateUI(); return;
+    }
+
+    answered = false;
+    document.getElementById('next-btn').style.display = 'none';
+    document.getElementById('result-msg').innerText = "";
+    
+    const totalW = active.reduce((s,i)=>s+i.weight, 0);
+    let rnd = Math.random() * totalW;
+    for(let i=0; i<active.length; i++){
+        rnd -= active[i].weight;
+        if(rnd <= 0){ currentQ = active[i]; break; }
+    }
+    document.getElementById('q-word').innerText = currentQ.en;
+
+    const lvIdx = parseInt(levelSelect.value);
+    const source = wordData.slice(lvIdx*100, (lvIdx+1)*100);
+    let wrong = source.filter(w=>w[1]!==currentQ.zh).sort(()=>Math.random()-0.5).slice(0,3).map(w=>w[1]);
+    const opts = [currentQ.zh, ...wrong].sort(()=>Math.random()-0.5);
+
+    const div = document.getElementById('options');
+    div.innerHTML = "";
+    opts.forEach(t => {
+        const b = document.createElement('div');
+        b.className = 'option-btn'; b.innerText = t;
+        b.onclick = () => handleAnswer(b, t);
+        div.appendChild(b);
+    });
+    updateUI();
+}
+
+function handleAnswer(btn, t) {
+    if(answered) return;
+    answered = true; totalPracticed++;
+    const correct = (t === currentQ.zh);
+    if(correct){
+        btn.classList.add('correct');
+        document.getElementById('result-msg').innerText = "答對了！";
+        correctCount++;
+        if(!isReviewMode) currentQ.isMastered = true;
+    } else {
+        btn.classList.add('wrong');
+        document.getElementById('result-msg').innerText = `正解：${currentQ.zh}`;
+        currentQ.weight += 2;
+        errorCounts[currentQ.en] = (errorCounts[currentQ.en]||0)+1;
+        Array.from(document.getElementById('options').children).forEach(c=>{
+            if(c.innerText === currentQ.zh) c.classList.add('correct');
+        });
+    }
+    saveData();
+    document.getElementById('next-btn').style.display = 'block';
+    updateUI();
+}
+
+function speakWord() {
+    const u = new SpeechSynthesisUtterance(currentQ.en);
+    u.lang = 'en-US'; u.rate = 0.8;
+    window.speechSynthesis.speak(u);
+}
+
+function startReviewMode() {
+    if(Object.keys(errorCounts).length === 0) return alert("沒錯題可複習");
+    isReviewMode = true; generateQuestion();
+}
+
+function saveData() {
+    const d = { quizPool, errorCounts, totalPracticed, correctCount };
+    localStorage.setItem(`pwa_1200_v1_${currentUser}_lv${levelSelect.value}`, JSON.stringify(d));
+}
+
+// 註冊 Service Worker 實現離線存取
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('data:text/javascript;base64,' + btoa(`
+      const CACHE_NAME = '1200-cache-v1';
+      self.addEventListener('install', (e) => {
+        e.waitUntil(caches.open(CACHE_NAME).then((c) => c.addAll(['.'])));
+      });
+      self.addEventListener('fetch', (e) => {
+        e.respondWith(caches.match(e.request).then((r) => r || fetch(e.request)));
+      });
+    `));
+  });
+}
+</script>
+</body>
+</html>
